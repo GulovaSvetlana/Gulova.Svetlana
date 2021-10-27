@@ -1,0 +1,54 @@
+#ДЗ
+# 1) Построить карту средних высот Ивы по районам
+# 2)  Показать что средняя высота растений зависит от видовой принадлежности в Тимирязевском районе 
+# 3) Посчитать регрессионную зависимость высоты от диаметра ствола Ивы для района Внуково
+
+#1
+library(tidyverse)
+library(sf)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+
+map = st_read ("greendb.csv")
+plot(map)
+
+average_heights = greendb %>% filter(species_ru == "Ива", adm_region != "NA") %>% group_by(adm_region )%>%
+  summarise(
+    mean_height = mean(height_m, na.rm = TRUE)
+  )
+
+average_heights_data = average_heights %>% group_by(adm_region, mean_height) %>%
+  arrange(adm_region, desc(mean_height)) %>%
+  mutate(order = order(mean_height, decreasing = T)) %>%
+  filter( order == 1) %>% select(-order, -mean_height) %>%
+  rename(NAME = adm_region)
+
+
+map = left_join(map, average_heights_data, by="NAME")
+
+
+ggplot() + geom_sf(data = map, aes(fill=mean_height))+
+  theme_foundation() + theme(legend.title = element_blank())
+
+
+
+#2 
+data = read_csv(file = "greendb.csv")
+
+data = data %>% filter(species_ru == "Ива")
+model = lm(height_m ~ adm_region== "Тимирязевский район")
+
+anova(model)
+
+
+
+#3
+
+fit_data = greendb %>% 
+  filter(species_ru == "Ива", adm_region == "район Внуково",
+         height_m < 100) %>% select( height_m, d_trunk_m)
+
+ggplot(fit_data, aes(x=height_m, y=d_trunk_m)) +
+  geom_point()+
+  geom_smooth(method=lm)
