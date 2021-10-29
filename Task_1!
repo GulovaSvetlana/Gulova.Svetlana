@@ -1,0 +1,37 @@
+# Построить карту средних высот Ивы по районам
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(sf)
+library(ggplot2)
+library(ggthemes)
+
+greendb = read_csv("greendb.csv")
+
+greendb %>% summary
+greendb |> summary()
+
+
+glimpse(greendb)
+colnames(greendb)
+names(greendb)
+
+plot(map)
+
+# Фильтруем по виду
+average_heights = greendb %>% filter(species_ru == "Ива", adm_region != "NA") %>% group_by(adm_region )%>%
+  summarise(mean_height = mean(height_m, na.rm = TRUE))
+
+# Правим табличку с данными, чтобы сортировка была и плот нормально обработал
+average_heights_data = average_heights %>% group_by(adm_region, mean_height) %>%
+  arrange(adm_region, desc(mean_height)) %>%
+  mutate(order = order(mean_height, decreasing = T)) %>%
+  filter( order == 1) %>% select(-order, -mean_height) %>%
+  rename(NAME = adm_region)
+
+
+map = left_join(map, average_heights_data, by="NAME")
+
+
+ggplot() + geom_sf(data = map, aes(fill=mean_height))+
+  theme_foundation() + theme(legend.title = element_blank())
